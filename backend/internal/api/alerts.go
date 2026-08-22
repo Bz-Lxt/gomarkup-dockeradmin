@@ -91,14 +91,12 @@ func (s *Server) mockWebhook(c *gin.Context) {
 	}
 	s.receiptsMu.Lock()
 	s.receiptSeq++
-	receiptID := s.receiptSeq
-	s.receiptsMu.Unlock()
-
-	receipt := model.WebhookReceipt{ID: receiptID, ReceivedAt: time.Now(), Payload: string(body)}
+	receipt := model.WebhookReceipt{ID: s.receiptSeq, ReceivedAt: time.Now(), Payload: string(body)}
 	s.receipts = append([]model.WebhookReceipt{receipt}, s.receipts...)
 	if len(s.receipts) > 100 {
 		s.receipts = s.receipts[:100]
 	}
+	s.receiptsMu.Unlock()
 	s.log.Info("mock webhook received", "id", receipt.ID, "bytes", len(body))
 	respondData(c, http.StatusOK, gin.H{"received": true, "id": receipt.ID})
 }
