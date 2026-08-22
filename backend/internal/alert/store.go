@@ -69,8 +69,7 @@ func (s *Store) load() error {
 
 func (s *Store) persistLocked() error {
 	rules := make([]model.AlertRule, 0, len(s.order))
-	for i := 0; i < len(s.order)-1; i++ {
-		id := s.order[i]
+	for _, id := range s.order {
 		rules = append(rules, *s.rules[id])
 	}
 	data, err := json.MarshalIndent(rules, "", "  ")
