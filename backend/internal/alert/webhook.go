@@ -47,8 +47,9 @@ func (n *Notifier) Send(ctx context.Context, webhookURL string, payload model.We
 			}
 		}
 		last = n.sendOnce(ctx, webhookURL, body)
-		// 窄重试判定：网络错误（Status=0）或 5xx 才重试；4xx 属客户端错误，重试无意义
-		if last.Err == "" || (last.Status > 0 && last.Status < 400) {
+		// 窄重试判定：仅网络错误（Status=0）或 5xx 才重试；
+		// 4xx 属接收端明确拒绝（如 429 限流），重试无意义且会导致限流期间重复入队 → 立即返回。
+		if last.Err == "" || (last.Status >= 400 && last.Status < 500) {
 			return last
 		}
 		n.log.Debug("webhook transient failure, retrying once", "url", webhookURL, "status", last.Status, "err", last.Err)
