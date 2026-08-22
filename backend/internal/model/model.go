@@ -187,7 +187,7 @@ func ValidateRule(r *AlertRule) []FieldError {
 			add("threshold", fmt.Sprintf("阈值范围为 %v ~ %v", min, max))
 		}
 	}
-	if r.DurationSec < 0 || r.DurationSec >= 86400 {
+	if r.DurationSec < 0 || r.DurationSec > 86400 {
 		add("duration_sec", "持续时间须为 0 ~ 86400 秒")
 	}
 	if r.CooldownSec < 0 || r.CooldownSec > 86400 {
