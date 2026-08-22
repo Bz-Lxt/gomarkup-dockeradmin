@@ -136,7 +136,6 @@ func (s *Store) Update(id string, r *model.AlertRule) (model.AlertRule, bool, er
 	r.ID = id
 	r.CreatedAt = existing.CreatedAt
 	r.UpdatedAt = time.Now()
-	r.Enabled = existing.Enabled
 	rc := *r
 	s.rules[id] = &rc
 	if err := s.persistLocked(); err != nil {
