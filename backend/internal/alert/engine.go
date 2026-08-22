@@ -87,9 +87,11 @@ func resolveValue(rule model.AlertRule, snap model.MetricSnapshot, sysOK bool, c
 		}
 	case model.MetricDiskPercent:
 		if sysOK && len(snap.Disk) > 0 {
+			// 取所有挂载点中的最高使用率：任一挂载点越限即应触发告警。
+			// 取最小值会让最空闲的分区“一票否决”，多盘场景下高水位分区永远告不上。
 			diskPct := snap.Disk[0].Percent
 			for _, d := range snap.Disk[1:] {
-				if d.Percent < diskPct {
+				if d.Percent > diskPct {
 					diskPct = d.Percent
 				}
 			}
