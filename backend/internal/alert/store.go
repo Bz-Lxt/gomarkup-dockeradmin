@@ -173,8 +173,8 @@ func (s *Store) AddEvent(e model.AlertEvent) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	e.ID = newID()
-	// 最新在前，上限 200 条
-	s.events = append(s.events, e)
+	// 最新在前，上限 200 条：新事件插入头部，超限时丢弃最旧的尾部。
+	s.events = append([]model.AlertEvent{e}, s.events...)
 	if len(s.events) > 200 {
 		s.events = s.events[:200]
 	}
