@@ -1,0 +1,74 @@
+# DockerAdmin — Dev 编排（随机端口 19217；/deploy 阶段归一化为 8081+）
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dockeradmin-app
+    ports:
+      - "19217:8080"
+    environment:
+      - TZ=Asia/Shanghai
+      - COLLECT_INTERVAL=2s
+      - RETENTION_WINDOW=1h
+      - LOG_LEVEL=info
+      - DATA_DIR=/data
+    volumes:
+      # Docker API socket：Linux 惯例路径（macOS Docker Desktop 亦会代理此路径入 VM，实测可用）
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+        read_only: true
+      # Docker API socket：macOS Docker Desktop 用户目录路径（双保险；Linux 上源缺失时 daemon 自动建空目录，后端探测自动跳过）
+      - type: bind
+        source: ${HOME}/.docker/run/docker.sock
+        target: /run/host-docker.sock
+        read_only: true
+      # 宿主 /proc（Linux → 真实宿主指标；macOS → 解析为 VM /proc 或空目录，后端探测自动降级为 VM 指标）
+      - type: bind
+        source: /proc
+        target: /host/proc
+        read_only: true
+      # 宿主根文件系统（Linux → 宿主磁盘统计；macOS → VM 根fs）
+      - type: bind
+        source: /
+        target: /rootfs
+        read_only: true
+      # 告警规则持久化
+      - type: volume
+        source: dockeradmin-data
+        target: /data
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/health"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  # QA 冒烟测试（profile 隔离，正常 up 不启动）：docker compose --profile test run --rm tests
+  tests:
+    profiles: ["test"]
+    image: python:3.12-alpine
+    container_name: dockeradmin-tests
+    working_dir: /tests
+    volumes:
+      - type: bind
+        source: ./tests
+        target: /tests
+        read_only: true
+    environment:
+      - BASE_URL=http://app:8080
+      - WEBHOOK_URL=http://app:8080/api/mock/webhook
+      - PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
+    command: sh -c "pip install -q -r requirements.txt && pytest -v --tb=short"
+    depends_on:
+      app:
+        condition: service_healthy
+
+volumes:
+  dockeradmin-data:
